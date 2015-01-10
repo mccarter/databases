@@ -1,15 +1,31 @@
-CREATE DATABASE chat;
+DROP DATABASE chatterbox;
+CREATE DATABASE chatterbox;
 
-USE chat;
+USE chatterbox;
 
-CREATE TABLE messages (
-  /* Describe your table here.*/
+
+CREATE TABLE rooms (
+  roomID INT NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY  (roomID)
 );
 
-/* Create other tables and define schemas for them here! */
+CREATE TABLE users (
+  userID INT NOT NULL AUTO_INCREMENT,
+  username VARCHAR(30),
+  PRIMARY KEY  (userID)
+);
 
+CREATE TABLE messages (
+  ID INT NOT NULL AUTO_INCREMENT,
+  username INT,
+  text VARCHAR(140),
+  roomname INT,
+  PRIMARY KEY  (ID),
+  FOREIGN KEY (username) REFERENCES users(userID),
+  FOREIGN KEY (roomname) REFERENCES rooms(roomID)
+);
 
-
+/* Create other tables and define schemas for them here! *
 
 /*  Execute this file from the command line by typing:
  *    mysql -u root < server/schema.sql
