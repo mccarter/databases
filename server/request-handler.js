@@ -1,96 +1,49 @@
-/*************************************************************
-
-You should implement your request handler function in this file.
-
-requestHandler is already getting passed to http.createServer()
-in basic-server.js, but it won't work as is.
-
-You'll have to figure out a way to export this function from
-this file and include it in basic-server.js so that it actually works.
-
-*Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
-
-**************************************************************/
-
 var urlLib = require('url');
 var pathLib = require('path');
 var querystringLib = require('querystring');
 var fs = require('fs');
-
-var messages = [];
+var mysql = require('mysql');
 
 exports.handleRequest = function(request, response) {
-  // Request and Response come from node's http module.
-  //
-  // They include information about both the incoming request, such as
-  // headers and URL, and about the outgoing response, such as its status
-  // and content.
-  //
-  // Documentation for both request and response can be found in the HTTP section at
-  // http://nodejs.org/documentation/api/
-
-  // Do some basic logging.
-  //
-  // Adding more logging to your server can be an easy way to get passive
-  // debugging help, but you should always be careful about leaving stray
-  // console.logs in your code.
-
-  // console.log("Serving request type " + request.method + " for url " + request.url);
 
   var url = urlLib.parse(request.url, true);
-  var headers = defaultCorsHeaders;
 
   if (url.pathname === '/classes/messages') {
-
     if (request.method === 'GET') {
 
+      //TODO get messages from database and send back in response
 
-      fs.readFile('.' + url.pathname, {encoding: 'utf8'}, function(err, data) {
-          if (err) {
-            console.log(err);
-           //TODO: check if msgs file doesn't exist, if so create empty messages file
-          } else {
-            var messages = [];
-            var objStrings = data.split('\n');
-            objStrings.forEach(function(string) {
-              if (string) {
-                messages.push(JSON.parse(string));
-              }
-            });
-
-
-            var statusCode = 200;
-            headers['Content-Type'] = "application/json";
-            response.writeHead(statusCode, headers);
-            response.end(JSON.stringify({results: messages}));
-          }
-      });
+      headers['Content-Type'] = "application/json";
+      sendResponse(response,200,messagePayload);
 
     } else if (request.method === 'POST') {
 
       var statusCode = 201;
-      headers['Content-Type'] = "text/plain";
-      response.writeHead(statusCode, headers);
+      collectData(request, function(data) {
 
-      var data = "";
-
-      request.on("data", function(chunk) {
-          data += chunk;
       });
-
-      request.on("end", function() {
-          fs.appendFile('classes/messages', data + '\n', function (err) {
-            response.end();
-          })
-      });
+      //TODO use mysql library to add message to the messages table
 
     } else if (request.method === 'OPTIONS') {
-      var statusCode = 200;
-      //headers['Content-Type'] = "text/plain";
-      response.writeHead(statusCode, headers);
-      response.end();
+      sendResponse(response,200);
+    }
+  } else if (url.pathname === "/classes/users") {
+    //TODO use mysql library to attempt to add a user to the user table
+    if (request.method === 'POST') {
+      collectData(request, function(username){
+        var queryString = 'insert into users (username) values (' + data + ')';
+        queryDatabase(queryString, function(err, rows, fields) {
+          if (err) {
+            sendResponse(response, 400,"error inserting into db");
+          } else {
+
+            sendResponse(response,201,"");
+          }
+        });
+      });
     } else {
-      //method not allowed?
+      //405 method not allowed
+      sendResponse(response, 405)
     }
   } else {
     if(url.pathname === "/") {
@@ -98,38 +51,56 @@ exports.handleRequest = function(request, response) {
     }
     fs.readFile("../client/client" + url.pathname, function(err, data) {
       if (err) {
-        var statusCode = 404;
-        //headers['Content-Type'] = "text/plain";
-        response.writeHead(statusCode, headers);
-        //response.end(url.pathname);
-        console.dir(err);
-        // response.end("client/client" + url.pathname);
-        //response.end("Go to hell");
+        sendResponse(response,404,"Sorry, not found!");
       } else {
-        var statusCode = 200;
         var filetype = pathLib.extname(url.pathname);
         headers['Content-Type'] = "text/" + filetype.substring(1);
-        response.writeHead(statusCode, headers);
-        response.end(data);
+        sendResponse(response,200,data);
       }
     });
   }
 };
 
-// These headers will allow Cross-Origin Resource Sharing (CORS).
-// This code allows this server to talk to websites that
-// are on different domains, for instance, your chat client.
-//
-// Your chat client is running from a url like file://your/chat/client/index.html,
-// which is considered a different domain.
-//
-// Another way to get around this restriction is to serve you chat
-// client from this domain by setting up static file serving.
-var defaultCorsHeaders = {
+var defaultCorsHeaders = headers = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, PUT, DELETE,  ",
   "access-control-allow-headers": "content-type, accept",
   "access-control-max-age": 10 // Seconds.
 };
+
+var queryDatabase = function(queryStr, callback) {
+  var connection = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: ''
+  });
+  connection.connect();
+  connection.query(queryStr, callback); //callback takes: err, rows, fields
+  connection.end();
+};
+
+var collectData = function(req,callback) {
+  var data = "";
+  request.on("data", function(chunk) {
+      data += chunk;
+  });
+
+  request.on('end', function () {
+    callback(data);
+  });
+
+};
+
+var sendResponse = function (res, statusCode, data, customHeaders) {
+  if(customHeaders) {
+    var responseHeaders = _.extend(_.clone(headers),customHeaders);
+  } else {
+    var responseHeaders = headers;
+  }
+
+  response.setHeader()
+  res.writeHead(statusCode,responseHeaders);
+  res.end(data);
+}
 
 
