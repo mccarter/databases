@@ -85,16 +85,17 @@ exports.handleRequest = function(request, response) {
       });
 
     } else if (request.method === 'OPTIONS') {
-
       var statusCode = 200;
       //headers['Content-Type'] = "text/plain";
-      headers['Allow'] = ["GET", "POST", "OPTIONS"];
       response.writeHead(statusCode, headers);
       response.end();
     } else {
       //method not allowed?
     }
   } else {
+    if(url.pathname === "/") {
+      url.pathname = "/index.html";
+    }
     fs.readFile("../client/client" + url.pathname, function(err, data) {
       if (err) {
         var statusCode = 404;
